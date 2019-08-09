@@ -388,6 +388,7 @@ void StokesProblem<dim>::setup_system ()
   matrix_free_matrix.initialize(mf_storage);
   matrix_free_matrix.compute_diagonal();
 
+  matrix_free_matrix.initialize_dof_vector(inv_diag_mf);
   inv_diag_mf = matrix_free_matrix.get_matrix_diagonal_inverse()->get_vector();
 //  for (auto indx : dof_handler.locally_owned_dofs())
 //    if (!constraints.is_constrained(indx))
