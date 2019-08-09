@@ -1,8 +1,6 @@
 
 const unsigned int velocity_degree = 2;
 
-double pressure_scaling = 1.0;
-
 
 
 #include <deal.II/base/quadrature_lib.h>
@@ -167,7 +165,7 @@ ABlockOperator<dim,degree_v,number>
     for (unsigned int q=0; q<velocity.n_q_points; ++q)
     {
       velocity.submit_symmetric_gradient
-          (velocity.get_symmetric_gradient(q),q);
+          (2.0*velocity.get_symmetric_gradient(q),q);
     }
     velocity.integrate (false, true);
     velocity.distribute_local_to_global (dst);
@@ -231,7 +229,7 @@ ABlockOperator<dim,degree_v,number>
       for (unsigned int q=0; q<velocity.n_q_points; ++q)
       {
         velocity.submit_symmetric_gradient
-            (velocity.get_symmetric_gradient(q),q);
+            (2.0*velocity.get_symmetric_gradient(q),q);
       }
       velocity.integrate (false,true);
 
