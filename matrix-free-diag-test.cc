@@ -455,7 +455,7 @@ void StokesProblem<dim>::assemble_system ()
 
 
   // Matrix-based diagonal
-  for (; cell!=endc; ++cell)
+  for (cell = dof_handler.begin_active(); cell!=endc; ++cell)
     if (cell->is_locally_owned())
     {
       cell->get_dof_indices (local_dof_indices);
