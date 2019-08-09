@@ -390,9 +390,9 @@ void StokesProblem<dim>::setup_system ()
 
   matrix_free_matrix.initialize_dof_vector(inv_diag_mf);
   inv_diag_mf = matrix_free_matrix.get_matrix_diagonal_inverse()->get_vector();
-//  for (auto indx : dof_handler.locally_owned_dofs())
-//    if (!constraints.is_constrained(indx))
-//      inv_diag_mf(indx) = 0.0;
+  for (auto indx : dof_handler.locally_owned_dofs())
+    if (!constraints.is_constrained(indx))
+      inv_diag_mf(indx) = 0.0;
   inv_diag_mf.print(std::cout);
   std::cout << inv_diag_mf.l2_norm() << std::endl;
 }
