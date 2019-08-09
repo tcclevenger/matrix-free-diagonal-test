@@ -204,7 +204,6 @@ ABlockOperator<dim,degree_v,number>
            ExcMessage("No diagonal entry in a positive definite operator "
                       "should be zero"));
 
-    std::cout << inverse_diagonal.local_element(i) << std::endl;
     inverse_diagonal.local_element(i) =
         1./inverse_diagonal.local_element(i);
   }
@@ -389,6 +388,7 @@ void StokesProblem<dim>::setup_system ()
   matrix_free_matrix.initialize(mf_storage);
   matrix_free_matrix.compute_diagonal();
 
+  std:cout << matrix_free_matrix.get_matrix_diagonal_inverse()->get_vector()(2) << std::endl;
 
   matrix_free_matrix.initialize_dof_vector(inv_diag_mf);
 }
