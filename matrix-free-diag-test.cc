@@ -493,7 +493,7 @@ void StokesProblem<dim>::get_ablock_diagonals()
   typename DoFHandler<dim>::active_cell_iterator cell = dof_handler.begin_active(),
       endc = dof_handler.end();
   for (; cell!=endc; ++cell)
-    if (cell->level_subdomain_id()==sim.triangulation.locally_owned_subdomain())
+    if (cell->subdomain_id()==triangulation.locally_owned_subdomain())
     {
       cell_matrix = 0;
       fe_values.reinit (cell);
