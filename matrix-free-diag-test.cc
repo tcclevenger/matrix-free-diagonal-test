@@ -203,6 +203,8 @@ ABlockOperator<dim,degree_v,number>
     Assert(inverse_diagonal.local_element(i) > 0.,
            ExcMessage("No diagonal entry in a positive definite operator "
                       "should be zero"));
+
+    std::cout << inverse_diagonal.local_element(i) << std::endl;
     inverse_diagonal.local_element(i) =
         1./inverse_diagonal.local_element(i);
   }
@@ -345,8 +347,6 @@ void StokesProblem<dim>::setup_system ()
                                                    0,
                                                    tangential_boundary,
                                                    constraints);
-  constraints.print(std::cout);
-
   constraints.close ();
 
   {
