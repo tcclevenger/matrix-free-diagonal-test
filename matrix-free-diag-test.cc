@@ -1,5 +1,5 @@
 
-const unsigned int velocity_degree = 2;
+const unsigned int velocity_degree = 1;
 
 
 
