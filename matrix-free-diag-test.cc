@@ -453,16 +453,16 @@ void StokesProblem<dim>::assemble_system ()
   system_matrix.compress (VectorOperation::add);
 
 
-  // Matrix-based diagonal
-  for (auto indx : dof_handler.locally_owned_dofs())
-    if (constraints.is_constrained(indx))
-      inv_diag_mb(indx) = 1.0/system_matrix.diag_element(indx);
+//  // Matrix-based diagonal
+//  for (auto indx : dof_handler.locally_owned_dofs())
+//    if (constraints.is_constrained(indx))
+//      inv_diag_mb(indx) = 1.0/system_matrix.diag_element(indx);
 
-  // Matrix-free inverse diagonal (computed in "compute_diagonal()")
-  inv_diag_mf = matrix_free_matrix.get_matrix_diagonal_inverse()->get_vector();
-  for (auto indx : dof_handler.locally_owned_dofs())
-    if (!constraints.is_constrained(indx))
-      inv_diag_mf(indx) = 0.0;
+//  // Matrix-free inverse diagonal (computed in "compute_diagonal()")
+//  inv_diag_mf = matrix_free_matrix.get_matrix_diagonal_inverse()->get_vector();
+//  for (auto indx : dof_handler.locally_owned_dofs())
+//    if (!constraints.is_constrained(indx))
+//      inv_diag_mf(indx) = 0.0;
 }
 
 
@@ -487,11 +487,11 @@ void StokesProblem<dim>::run ()
   setup_system ();
   assemble_system();
 
-  inv_diag_mb.print(std::cout);
+//  inv_diag_mb.print(std::cout);
 
-  std::cout << std::endl;
+//  std::cout << std::endl;
 
-  inv_diag_mf.print(std::cout);
+//  inv_diag_mf.print(std::cout);
 
   output_results(0);
 }
