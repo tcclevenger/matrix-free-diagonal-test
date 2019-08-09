@@ -42,7 +42,7 @@ const unsigned int velocity_degree = 1;
 
 
 #include <deal.II/fe/fe_q.h>
-#include <deal.II/fe/fe_values.h>
+#include <deal.II/fe/fealues.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_dgq.h>
 
@@ -257,6 +257,8 @@ private:
   void setup_system ();
   void assemble_system ();
 
+  void get_ablock_diagonals ();
+
   void output_results (const unsigned int cycle) const;
 
   typedef LA::MPI::Vector mb_vector_t;
@@ -402,7 +404,7 @@ void StokesProblem<dim>::assemble_system ()
 
   const QGauss<dim>  quadrature_formula(degree+1);
 
-  FEValues<dim> fe_values (fe, quadrature_formula,
+  FEValues<dim> fealues (fe, quadrature_formula,
                            update_values    |  update_gradients |
                            update_quadrature_points |
                            update_JxW_values);
@@ -427,20 +429,20 @@ void StokesProblem<dim>::assemble_system ()
     {
       cell->get_dof_indices (local_dof_indices);
       cell_matrix = 0;
-      fe_values.reinit (cell);
+      fealues.reinit (cell);
 
       for (unsigned int q=0; q<n_q_points; ++q)
       {
         for (unsigned int k=0; k<dofs_per_cell; ++k)
         {
-          symgrad_phi_u[k] = fe_values[velocities].symmetric_gradient (k, q);
+          symgrad_phi_u[k] = fealues[velocities].symmetric_gradient (k, q);
         }
 
         for (unsigned int i=0; i<dofs_per_cell; ++i)
           for (unsigned int j=0; j<dofs_per_cell; ++j)
           {
             cell_matrix(i,j) += ((2*(symgrad_phi_u[i]*symgrad_phi_u[j])
-                                  * fe_values.JxW(q)));
+                                  * fealues.JxW(q)));
           }
       }
 
@@ -463,6 +465,65 @@ void StokesProblem<dim>::assemble_system ()
           inv_diag_mb(local_dof_indices[i]) = 1.0/system_matrix.diag_element(local_dof_indices[i]);
         }
     }
+}
+
+template <int dim>
+void StokesProblem<dim>::get_ablock_diagonals()
+{
+  // If we have a tangential boundary we must compute the diagonal
+  // outside of the matrix-free object
+  dealii::LinearAlgebra::distributed::Vector<double> diagonal_vector;
+  matrix_free_matrix.initialize_dof_vector(diagonal_vector);
+
+  QGauss<dim>  quadrature_formula(velocity_degree+1);
+  FEValues<dim> fe_values (fe, quadrature_formula,
+                           update_values   | update_gradients |
+                           update_quadrature_points | update_JxW_values);
+
+  const unsigned int   dofs_per_cell   = fe.dofs_per_cell;
+  const unsigned int   n_q_points      = quadrature_formula.size();
+
+  FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
+
+  std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
+  const FEValuesExtractors::Vector velocities (0);
+
+  std::vector<SymmetricTensor<2,dim> > symgrad_phi_u (dofs_per_cell);
+
+  typename DoFHandler<dim>::active_cell_iterator cell = dof_handler.begin_active(),
+      endc = dof_handler.end();
+  for (; cell!=endc; ++cell)
+    if (cell->level_subdomain_id()==sim.triangulation.locally_owned_subdomain())
+    {
+      cell_matrix = 0;
+      fe_values.reinit (cell);
+
+      for (unsigned int q=0; q<n_q_points; ++q)
+      {
+        for (unsigned int k=0; k<dofs_per_cell; ++k)
+          symgrad_phi_u[k] = fe_values[velocities].symmetric_gradient (k, q);
+
+        for (unsigned int i=0; i<dofs_per_cell; ++i)
+          for (unsigned int j=0; j<dofs_per_cell; ++j)
+            cell_matrix(i,j) += (2*(symgrad_phi_u[i]*symgrad_phi_u[j])
+                                 * fe_values.JxW(q));
+      }
+
+      cell->get_dof_indices (local_dof_indices);
+
+      // New function that only distributes to the diagonal
+//      constraints.distribute_local_to_global_new_public (cell_matrix,
+//                                                          local_dof_indices,
+//                                                         diagonal_vector);
+      constraints.distribute_local_to_global (cell_matrix,
+                                              local_dof_indices,
+                                              system_matrix);
+    }
+
+  // If we have the new distribute_local_to_global above, we only have stored a vector.
+  //diagonal_vector.compress(VectorOperation::add);
+  system_matrix.compress (VectorOperation::add);
+}
 }
 
 
