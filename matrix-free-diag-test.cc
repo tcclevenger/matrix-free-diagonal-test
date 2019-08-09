@@ -548,12 +548,14 @@ void StokesProblem<dim>::run ()
   assemble_system();
 
   //inv_diag_mb.print(std::cout);
+  std::cout << "Matrix-based:" << std::endl;
   for (unsigned int i=0; i<inv_diag_mb.size(); ++i)
     std::cout << inv_diag_mb(i) << std::endl;
 
   std::cout << std::endl;
 
   //inv_diag_mf.print(std::cout);
+  std::cout << "Matrix-free:" << std::endl;
   for (unsigned int i=0; i<inv_diag_mf.size(); ++i)
     std::cout << inv_diag_mf(i) << std::endl;
 
