@@ -42,7 +42,7 @@ const unsigned int velocity_degree = 1;
 
 
 #include <deal.II/fe/fe_q.h>
-#include <deal.II/fe/fealues.h>
+#include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_dgq.h>
 
