@@ -345,6 +345,8 @@ void StokesProblem<dim>::setup_system ()
                                                    0,
                                                    tangential_boundary,
                                                    constraints);
+  constraints.print(std::cout);
+
   constraints.close ();
 
   {
