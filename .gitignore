@@ -3,3 +3,4 @@ CMakeFiles/*
 /Makefile
 /cmake_install.cmake
 /matrix-free-diag-test
+/matrix-free-diag-test.cbp

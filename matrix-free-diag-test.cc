@@ -356,9 +356,10 @@ void StokesProblem<dim>::setup_system ()
                                      constraints, false);
 
     SparsityTools::distribute_sparsity_pattern (dsp,
-                                                dof_handler.n_locally_owned_dofs_per_processor(),
+                                                dof_handler.compute_n_locally_owned_dofs_per_processor(),
                                                 MPI_COMM_WORLD,
                                                 locally_relevant_dofs);
+
 
     system_matrix.reinit (dof_handler.locally_owned_dofs(),
                           dof_handler.locally_owned_dofs(),
@@ -449,9 +450,11 @@ void StokesProblem<dim>::assemble_system ()
   system_matrix.compress (VectorOperation::add);
 
 
+  // Matrix-based diagonal
   for (auto indx : dof_handler.locally_owned_dofs())
     inv_diag_mb(indx) = 1.0/system_matrix.diag_element(indx);
 
+  // Matrix-free inverse diagonal (computed in "compute_diagonal()")
   inv_diag_mf = matrix_free_matrix.get_matrix_diagonal_inverse()->get_vector();
 }
 
