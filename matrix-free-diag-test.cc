@@ -489,6 +489,8 @@ void StokesProblem<dim>::run ()
   std::cout << std::endl;
 
   inv_diag_mf.print(std::cout);
+
+  output_results(0);
 }
 }
 
