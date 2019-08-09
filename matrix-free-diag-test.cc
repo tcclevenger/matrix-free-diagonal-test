@@ -487,6 +487,8 @@ void StokesProblem<dim>::run ()
   setup_system ();
   assemble_system();
 
+  constraints.print(std::cout);
+
   inv_diag_mb.print(std::cout);
   std::cout << inv_diag_mb.l2_norm() << std::endl;
 
