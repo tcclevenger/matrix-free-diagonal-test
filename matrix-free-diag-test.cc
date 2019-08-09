@@ -308,7 +308,8 @@ StokesProblem<dim>::StokesProblem ()
 template <int dim>
 void StokesProblem<dim>::make_grid()
 {
-  GridGenerator::hyper_ball (triangulation);
+  GridGenerator::hyper_shell (triangulation, Point<dim>(), 1, 2, 0, true);
+
   triangulation.refine_global (0);
 }
 
