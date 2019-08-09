@@ -393,6 +393,7 @@ void StokesProblem<dim>::setup_system ()
 //    if (!constraints.is_constrained(indx))
 //      inv_diag_mf(indx) = 0.0;
   inv_diag_mf.print(std::cout);
+  std::cout << inv_diag_mf.l2_norm() << std::endl;
 }
 
 
