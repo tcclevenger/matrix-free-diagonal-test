@@ -329,8 +329,8 @@ void StokesProblem<dim>::setup_system ()
   DoFTools::make_hanging_node_constraints (dof_handler,
                                            constraints);
 
-  std::set<unsigned int> dirichlet_boundary = {0,1};
-  std::set<unsigned int> tangential_boundary = {};
+  std::set<unsigned int> dirichlet_boundary = {0};
+  std::set<unsigned int> tangential_boundary = {1};
 
   BoundaryValues<dim> boundary;
   for (auto bid : dirichlet_boundary)
