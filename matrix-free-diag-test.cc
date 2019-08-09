@@ -405,9 +405,9 @@ void StokesProblem<dim>::assemble_system ()
   const QGauss<dim>  quadrature_formula(degree+1);
 
   FEValues<dim> fealues (fe, quadrature_formula,
-                           update_values    |  update_gradients |
-                           update_quadrature_points |
-                           update_JxW_values);
+                         update_values    |  update_gradients |
+                         update_quadrature_points |
+                         update_JxW_values);
 
 
   const unsigned int   dofs_per_cell = fe.dofs_per_cell;
@@ -512,9 +512,9 @@ void StokesProblem<dim>::get_ablock_diagonals()
       cell->get_dof_indices (local_dof_indices);
 
       // New function that only distributes to the diagonal
-//      constraints.distribute_local_to_global_new_public (cell_matrix,
-//                                                          local_dof_indices,
-//                                                         diagonal_vector);
+      //      constraints.distribute_local_to_global_new_public (cell_matrix,
+      //                                                          local_dof_indices,
+      //                                                         diagonal_vector);
       constraints.distribute_local_to_global (cell_matrix,
                                               local_dof_indices,
                                               system_matrix);
@@ -523,7 +523,6 @@ void StokesProblem<dim>::get_ablock_diagonals()
   // If we have the new distribute_local_to_global above, we only have stored a vector.
   //diagonal_vector.compress(VectorOperation::add);
   system_matrix.compress (VectorOperation::add);
-}
 }
 
 
