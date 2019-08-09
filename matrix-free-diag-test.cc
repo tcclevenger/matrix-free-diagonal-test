@@ -393,6 +393,7 @@ void StokesProblem<dim>::setup_system ()
   for (auto indx : dof_handler.locally_owned_dofs())
     if (!constraints.is_constrained(indx))
       inv_diag_mf(indx) = 0.0;
+  inv_diag_mf.print(std::cout);
 }
 
 
