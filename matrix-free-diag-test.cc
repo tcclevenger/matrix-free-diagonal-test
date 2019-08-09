@@ -206,8 +206,6 @@ ABlockOperator<dim,degree_v,number>
 
     inverse_diagonal.local_element(i) =
         1./inverse_diagonal.local_element(i);
-
-    std::cout << inverse_diagonal.local_element(i) << std::endl;
   }
 }
 template <int dim, int degree_v, typename number>
@@ -389,6 +387,9 @@ void StokesProblem<dim>::setup_system ()
   matrix_free_matrix.clear();
   matrix_free_matrix.initialize(mf_storage);
   matrix_free_matrix.compute_diagonal();
+
+  inv_diag_mf = matrix_free_matrix.get_matrix_diagonal_inverse()->get_vector();
+  inv_diag_mf.print(std::cout);
 
   matrix_free_matrix.initialize_dof_vector(inv_diag_mf);
 }
