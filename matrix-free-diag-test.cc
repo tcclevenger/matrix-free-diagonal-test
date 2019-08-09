@@ -388,7 +388,7 @@ void StokesProblem<dim>::setup_system ()
   matrix_free_matrix.initialize(mf_storage);
   matrix_free_matrix.compute_diagonal();
 
-  std:cout << matrix_free_matrix.get_matrix_diagonal_inverse()->get_vector()(2) << std::endl;
+  std::cout << matrix_free_matrix.get_matrix_diagonal_inverse()->get_vector()(2) << std::endl;
 
   matrix_free_matrix.initialize_dof_vector(inv_diag_mf);
 }
