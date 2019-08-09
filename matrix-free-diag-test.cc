@@ -487,13 +487,15 @@ void StokesProblem<dim>::run ()
   setup_system ();
   assemble_system();
 
-  inv_diag_mb.print(std::cout);
-  std::cout << inv_diag_mb.l2_norm() << std::endl;
+  //inv_diag_mb.print(std::cout);
+  for (unsigned int i=0; i<inv_diag_mb.size(); ++i)
+    std::cout << inv_diag_mb(i) << std::endl;
 
   std::cout << std::endl;
 
-  inv_diag_mf.print(std::cout);
-  std::cout << inv_diag_mf.l2_norm() << std::endl;
+  //inv_diag_mf.print(std::cout);
+  for (unsigned int i=0; i<inv_diag_mf.size(); ++i)
+    std::cout << inv_diag_mf(i) << std::endl;
 
   output_results(0);
 }
