@@ -452,7 +452,8 @@ void StokesProblem<dim>::assemble_system ()
 
   // Matrix-based diagonal
   for (auto indx : dof_handler.locally_owned_dofs())
-    inv_diag_mb(indx) = 1.0/system_matrix.diag_element(indx);
+    if (constraints.is_constrained(indx))
+      inv_diag_mb(indx) = 1.0/system_matrix.diag_element(indx);
 
   // Matrix-free inverse diagonal (computed in "compute_diagonal()")
   inv_diag_mf = matrix_free_matrix.get_matrix_diagonal_inverse()->get_vector();
