@@ -393,8 +393,6 @@ void StokesProblem<dim>::setup_system ()
   for (auto indx : dof_handler.locally_owned_dofs())
     if (constraints.is_constrained(indx))
       inv_diag_mf(indx) = 0.0;
-  inv_diag_mf.print(std::cout);
-  std::cout << inv_diag_mf.l2_norm() << std::endl;
 }
 
 
@@ -457,9 +455,14 @@ void StokesProblem<dim>::assemble_system ()
 
 
   // Matrix-based diagonal
-  for (auto indx : dof_handler.locally_owned_dofs())
-    if (constraints.is_constrained(indx))
-      inv_diag_mb(indx) = 1.0/system_matrix.diag_element(indx);
+  for (; cell!=endc; ++cell)
+    if (cell->is_locally_owned())
+    {
+      cell->get_dof_indices (local_dof_indices);
+      for (unsigned int i=0; i<dofs_per_cell; ++i)
+        if (constraints.is_constrained(local_dof_indices[i]))
+          inv_diag_mb(local_dof_indices[i]) = 1.0/system_matrix.diag_element(local_dof_indices[i]);
+    }
 }
 
 
@@ -487,10 +490,10 @@ void StokesProblem<dim>::run ()
   inv_diag_mb.print(std::cout);
   std::cout << inv_diag_mb.l2_norm() << std::endl;
 
-//  std::cout << std::endl;
+  std::cout << std::endl;
 
-//  inv_diag_mf.print(std::cout);
-//  std::cout << inv_diag_mf.l2_norm() << std::endl;
+  inv_diag_mf.print(std::cout);
+  std::cout << inv_diag_mf.l2_norm() << std::endl;
 
   output_results(0);
 }
