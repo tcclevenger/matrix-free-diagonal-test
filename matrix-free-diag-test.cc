@@ -458,8 +458,10 @@ void StokesProblem<dim>::assemble_system ()
     {
       cell->get_dof_indices (local_dof_indices);
       for (unsigned int i=0; i<dofs_per_cell; ++i)
-        if (constraints.is_constrained(local_dof_indices[i]))
+        if (!constraints.is_constrained(local_dof_indices[i]))
+        {
           inv_diag_mb(local_dof_indices[i]) = 1.0/system_matrix.diag_element(local_dof_indices[i]);
+        }
     }
 }
 
