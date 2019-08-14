@@ -360,7 +360,8 @@ ABlockOperator<dim,degree_v,number>
       // 3c) perform stand matrix-free operation
       fe_eval.evaluate(false, true, false);
       for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
-        fe_eval.submit_gradient(fe_eval.get_gradient(q), q);
+        fe_eval.submit_symmetric_gradient
+            (2.0*fe_eval.get_symmetric_gradient(q),q);
       fe_eval.integrate(false, true);
 
       // 3d)
