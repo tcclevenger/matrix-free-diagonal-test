@@ -686,6 +686,8 @@ void StokesProblem<dim>::run ()
     std::cout << new_diag_mf(i) << std::endl;
 
   output_results(0);
+
+  constraints.print(std::cout);
 }
 }
 
