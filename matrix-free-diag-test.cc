@@ -287,7 +287,6 @@ ABlockOperator<dim,degree_v,number>
                          const std::pair<unsigned int, unsigned int> &cell_range) const
 {
   const bool is_mg = false;
-  const bool is_dg = (data.get_dof_handler().get_fe().dofs_per_vertex == 0);
 
   FEEvaluation<dim, degree_v, degree_v + 1, 1, number> fe_eval(data);
   FEEvaluation<dim, degree_v, degree_v + 1, 1, number> fe_eval_plain(mf_plain);
@@ -314,16 +313,13 @@ ABlockOperator<dim,degree_v,number>
       else
         cell_v->get_dof_indices(dof_indices[v]);
 
-      if (!is_dg)
-      {
-        // in the case of CG: shape functions are not ordered
+      // in the case of CG: shape functions are not ordered
         // lexicographically see
         // (https://www.dealii.org/8.5.1/doxygen/deal.II/classFE__Q.html)
         // so we have to fix the order
         auto temp = dof_indices[v];
         for (unsigned int j = 0; j < dof_indices[v].size(); j++)
           dof_indices[v][j] = temp[data.get_shape_info().lexicographic_numbering[j]];
-      }
     }
 
     // 3) loop over all local DoFs and setup local diagonal entry by entry
