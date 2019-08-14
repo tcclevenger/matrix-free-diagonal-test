@@ -560,9 +560,9 @@ void StokesProblem<dim>::setup_system ()
   matrix_free_matrix.initialize_dof_vector(new_inv_diag_mf);
   matrix_free_matrix.new_compute_diag(new_inv_diag_mf,dummy_vec);
 
-  for (auto indx : dof_handler.locally_owned_dofs())
-    if (constraints.is_constrained(indx))
-      new_inv_diag_mf(indx) = 0.0;
+//  for (auto indx : dof_handler.locally_owned_dofs())
+//    if (constraints.is_constrained(indx))
+//      new_inv_diag_mf(indx) = 0.0;
 
 }
 
@@ -633,7 +633,7 @@ void StokesProblem<dim>::assemble_system ()
       for (unsigned int i=0; i<dofs_per_cell; ++i)
         if (!constraints.is_constrained(local_dof_indices[i]))
         {
-          inv_diag_mb(local_dof_indices[i]) = 1.0/system_matrix.diag_element(local_dof_indices[i]);
+          inv_diag_mb(local_dof_indices[i]) = system_matrix.diag_element(local_dof_indices[i]);
         }
     }
 }
