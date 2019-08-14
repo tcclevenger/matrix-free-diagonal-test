@@ -214,23 +214,29 @@ ABlockOperator<dim,degree_v,number>
 {
   this->inverse_diagonal_entries.
       reset(new DiagonalMatrix<LinearAlgebra::distributed::Vector<number> >());
+  this->diagonal_entries.
+      reset(new DiagonalMatrix<LinearAlgebra::distributed::Vector<number> >());
   LinearAlgebra::distributed::Vector<number> &inverse_diagonal =
       this->inverse_diagonal_entries->get_vector();
+  LinearAlgebra::distributed::Vector<number> &diagonal =
+      this->diagonal_entries->get_vector();
   this->data->initialize_dof_vector(inverse_diagonal);
+  this->data->initialize_dof_vector(diagonal);
+
   unsigned int dummy = 0;
   this->data->cell_loop (&ABlockOperator::local_compute_diagonal, this,
-                         inverse_diagonal, dummy);
+                         diagonal, dummy);
 
-  this->set_constrained_entries_to_one(inverse_diagonal);
+  this->set_constrained_entries_to_one(diagonal);
 
-  for (unsigned int i=0; i<inverse_diagonal.local_size(); ++i)
+  for (unsigned int i=0; i<diagonal.local_size(); ++i)
   {
-    Assert(inverse_diagonal.local_element(i) > 0.,
+    Assert(diagonal.local_element(i) > 0.,
            ExcMessage("No diagonal entry in a positive definite operator "
                       "should be zero"));
 
     inverse_diagonal.local_element(i) =
-        1./inverse_diagonal.local_element(i);
+        1./diagonal.local_element(i);
   }
 }
 template <int dim, int degree_v, typename number>
@@ -278,7 +284,7 @@ ABlockOperator<dim,degree_v,number>
 {
   this->data->cell_loop(&ABlockOperator::new_compute_diag_local, this, dst, src);
 
-//  this->set_constrained_entries_to_one(dst);
+  this->set_constrained_entries_to_one(dst);
 //  for (unsigned int i=0; i<dst.local_size(); ++i)
 //  {
 //    Assert(dst.local_element(i) > 0.,
@@ -433,9 +439,9 @@ private:
 
   MatrixFreeOperators                       matrix_free_matrix;
 
-  mb_vector_t                      inv_diag_mb;
-  mf_vector_t                      inv_diag_mf;
-  mf_vector_t                      new_inv_diag_mf;
+  mb_vector_t                      diag_mb;
+  mf_vector_t                      diag_mf;
+  mf_vector_t                      new_diag_mf;
 
   ConditionalOStream                        pcout;
 };
@@ -519,7 +525,7 @@ void StokesProblem<dim>::setup_system ()
                           MPI_COMM_WORLD);
   }
 
-  inv_diag_mb.reinit (dof_handler.locally_owned_dofs(), locally_relevant_dofs, MPI_COMM_WORLD);
+  diag_mb.reinit (dof_handler.locally_owned_dofs(), locally_relevant_dofs, MPI_COMM_WORLD);
 
 
 
@@ -540,11 +546,11 @@ void StokesProblem<dim>::setup_system ()
   matrix_free_matrix.initialize(mf_storage);
   matrix_free_matrix.compute_diagonal();
 
-  matrix_free_matrix.initialize_dof_vector(inv_diag_mf);
-  inv_diag_mf = matrix_free_matrix.get_matrix_diagonal_inverse()->get_vector();
+  matrix_free_matrix.initialize_dof_vector(diag_mf);
+  diag_mf = matrix_free_matrix.get_matrix_diagonal()->get_vector();
   for (auto indx : dof_handler.locally_owned_dofs())
     if (constraints.is_constrained(indx))
-      inv_diag_mf(indx) = 0.0;
+      diag_mf(indx) = 0.0;
 
 
 
@@ -557,12 +563,12 @@ void StokesProblem<dim>::setup_system ()
 
   mf_vector_t dummy_vec;
   matrix_free_matrix.initialize_dof_vector(dummy_vec);
-  matrix_free_matrix.initialize_dof_vector(new_inv_diag_mf);
-  matrix_free_matrix.new_compute_diag(new_inv_diag_mf,dummy_vec);
+  matrix_free_matrix.initialize_dof_vector(new_diag_mf);
+  matrix_free_matrix.new_compute_diag(new_diag_mf,dummy_vec);
 
-//  for (auto indx : dof_handler.locally_owned_dofs())
-//    if (constraints.is_constrained(indx))
-//      new_inv_diag_mf(indx) = 0.0;
+  for (auto indx : dof_handler.locally_owned_dofs())
+    if (constraints.is_constrained(indx))
+      new_diag_mf(indx) = 0.0;
 
 }
 
@@ -633,7 +639,7 @@ void StokesProblem<dim>::assemble_system ()
       for (unsigned int i=0; i<dofs_per_cell; ++i)
         if (!constraints.is_constrained(local_dof_indices[i]))
         {
-          inv_diag_mb(local_dof_indices[i]) = system_matrix.diag_element(local_dof_indices[i]);
+          diag_mb(local_dof_indices[i]) = system_matrix.diag_element(local_dof_indices[i]);
         }
     }
 }
@@ -660,24 +666,24 @@ void StokesProblem<dim>::run ()
   setup_system ();
   assemble_system();
 
-  //inv_diag_mb.print(std::cout);
+  //diag_mb.print(std::cout);
   std::cout << "Matrix-based:" << std::endl;
-  for (unsigned int i=0; i<inv_diag_mb.size(); ++i)
-    std::cout << inv_diag_mb(i) << std::endl;
+  for (unsigned int i=0; i<diag_mb.size(); ++i)
+    std::cout << diag_mb(i) << std::endl;
 
   std::cout << std::endl;
 
-  //inv_diag_mf.print(std::cout);
+  //diag_mf.print(std::cout);
   std::cout << "Matrix-free:" << std::endl;
-  for (unsigned int i=0; i<inv_diag_mf.size(); ++i)
-    std::cout << inv_diag_mf(i) << std::endl;
+  for (unsigned int i=0; i<diag_mf.size(); ++i)
+    std::cout << diag_mf(i) << std::endl;
 
   std::cout << std::endl;
 
-  //new_inv_diag_mf.print(std::cout);
+  //new_diag_mf.print(std::cout);
   std::cout << "NEW Matrix-free:" << std::endl;
-  for (unsigned int i=0; i<new_inv_diag_mf.size(); ++i)
-    std::cout << new_inv_diag_mf(i) << std::endl;
+  for (unsigned int i=0; i<new_diag_mf.size(); ++i)
+    std::cout << new_diag_mf(i) << std::endl;
 
   output_results(0);
 }
