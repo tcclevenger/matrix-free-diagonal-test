@@ -276,6 +276,17 @@ ABlockOperator<dim,degree_v,number>
                    const LinearAlgebra::distributed::Vector<number> &src)
 {
   this->data->cell_loop(&ABlockOperator::new_compute_diag_local, this, dst, src);
+
+  this->set_constrained_entries_to_one(dst);
+  for (unsigned int i=0; i<dst.local_size(); ++i)
+  {
+    Assert(dst.local_element(i) > 0.,
+           ExcMessage("No diagonal entry in a positive definite operator "
+                      "should be zero"));
+
+    dst.local_element(i) =
+        1./dst.local_element(i);
+  }
 }
 
 template <int dim, int degree_v, typename number>
