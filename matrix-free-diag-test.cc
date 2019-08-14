@@ -288,8 +288,8 @@ ABlockOperator<dim,degree_v,number>
 {
   const bool is_mg = false;
 
-  FEEvaluation<dim, degree_v, degree_v + 1, 1, number> fe_eval(data);
-  FEEvaluation<dim, degree_v, degree_v + 1, 1, number> fe_eval_plain(mf_plain);
+  FEEvaluation<dim, degree_v, degree_v + 1, dim, number> fe_eval(data);
+  FEEvaluation<dim, degree_v, degree_v + 1, dim, number> fe_eval_plain(mf_plain);
 
   for (unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)
   {
