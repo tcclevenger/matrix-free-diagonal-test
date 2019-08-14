@@ -119,7 +119,14 @@ class ABlockOperator
 public:
   ABlockOperator ();
   void clear ();
+
+  void attach_for_diag (const MatrixFree<dim, number> &mf,
+                        const AffineConstraints<number> &c);
+
   virtual void compute_diagonal ();
+
+  void new_compute_diag (LinearAlgebra::distributed::Vector<number> &      dst,
+                         const LinearAlgebra::distributed::Vector<number> &src);
 
 private:
   virtual void apply_add (LinearAlgebra::distributed::Vector<number> &dst,
@@ -135,6 +142,15 @@ private:
                                const unsigned int                               &dummy,
                                const std::pair<unsigned int,unsigned int>       &cell_range) const;
 
+
+  void new_compute_diag_local (const MatrixFree<dim, number> &             data,
+                               LinearAlgebra::distributed::Vector<number> &dst,
+                               const LinearAlgebra::distributed::Vector<number> & src,
+                               const std::pair<unsigned int, unsigned int> &cell_range) const;
+
+  MatrixFree<dim, number> &  mf_plain;
+  AffineConstraints<number> &constraints;
+
 };
 template <int dim, int degree_v, typename number>
 ABlockOperator<dim,degree_v,number>::ABlockOperator ()
@@ -147,6 +163,16 @@ ABlockOperator<dim,degree_v,number>::clear ()
 {
   MatrixFreeOperators::Base<dim,LinearAlgebra::distributed::Vector<number> >::clear();
 }
+
+template <int dim, int degree_v, typename number>
+void
+ABlockOperator<dim,degree_v,number>::attach_for_diag(const MatrixFree<dim, number> &  mf,
+                                                     const AffineConstraints<number> &c)
+{
+  mf_plain = mf;
+  constraints = c;
+}
+
 template <int dim, int degree_v, typename number>
 void
 ABlockOperator<dim,degree_v,number>
@@ -243,6 +269,121 @@ ABlockOperator<dim,degree_v,number>
 }
 
 
+template <int dim, int degree_v, typename number>
+void
+ABlockOperator<dim,degree_v,number>
+::new_compute_diag(LinearAlgebra::distributed::Vector<number> &      dst,
+                   const LinearAlgebra::distributed::Vector<number> &src)
+{
+  data->cell_loop(&ABlockOperator::compute_diag_local, this, dst, src);
+}
+
+template <int dim, int degree_v, typename number>
+void
+ABlockOperator<dim,degree_v,number>
+::new_compute_diag_local(const MatrixFree<dim, number> &             data,
+                         LinearAlgebra::distributed::Vector<number> &dst,
+                         const LinearAlgebra::distributed::Vector<number> & /*src*/,
+                         const std::pair<unsigned int, unsigned int> &cell_range) const
+{
+  const bool is_mg = false;
+  const bool is_dg = (data.get_dof_handler().get_fe().dofs_per_vertex == 0);
+
+  FEEvaluation<dim, degree_v, degree_v + 1, 1, number> fe_eval(data);
+  FEEvaluation<dim, degree_v, degree_v + 1, 1, number> fe_eval_plain(mf_plain);
+
+  for (unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)
+  {
+    fe_eval.reinit(cell);
+    fe_eval_plain.reinit(cell);
+
+    // 1) initialize empty local diagonal
+    AlignedVector<VectorizedArray<number>> diagonal(fe_eval.dofs_per_cell,
+                                                    make_vectorized_array<number>(0.0));
+
+    // 2) get DoF-indices
+    std::vector<types::global_dof_index> dof_indices[VectorizedArray<number>::n_array_elements];
+    for (unsigned int v = 0; v < data.n_components_filled(cell); v++)
+    {
+      dof_indices[v].resize(fe_eval.dofs_per_cell);
+
+      auto cell_v = data.get_cell_iterator(cell, v);
+
+      if (is_mg)
+        cell_v->get_mg_dof_indices(dof_indices[v]);
+      else
+        cell_v->get_dof_indices(dof_indices[v]);
+
+      if (!is_dg)
+      {
+        // in the case of CG: shape functions are not ordered
+        // lexicographically see
+        // (https://www.dealii.org/8.5.1/doxygen/deal.II/classFE__Q.html)
+        // so we have to fix the order
+        auto temp = dof_indices[v];
+        for (unsigned int j = 0; j < dof_indices[v].size(); j++)
+          dof_indices[v][j] = temp[data.get_shape_info().lexicographic_numbering[j]];
+      }
+    }
+
+    // 3) loop over all local DoFs and setup local diagonal entry by entry
+    for (unsigned int i = 0; i < fe_eval.dofs_per_cell; ++i)
+    {
+      // 3a) zero out local source vector
+      for (unsigned int j = 0; j < fe_eval.dofs_per_cell; ++j)
+        fe_eval.begin_dof_values()[j] = make_vectorized_array<number>(0.0);
+
+      // 3b) create standard basis taking care constraints
+      for (unsigned int v = 0; v < data.n_components_filled(cell); v++)
+        if (!constraints.is_constrained(dof_indices[v][i]))
+        {
+          fe_eval.begin_dof_values()[i][v] = 1.0;
+
+          for (unsigned int ii = 0; ii < dof_indices[v].size(); ii++)
+          {
+            if (!constraints.is_constrained(dof_indices[v][ii]))
+              continue;
+            auto &cs = *constraints.get_constraint_entries(dof_indices[v][ii]);
+            for (auto c : cs)
+              if (c.first == dof_indices[v][i])
+                fe_eval.begin_dof_values()[ii][v] = c.second;
+          }
+        }
+
+      // 3c) perform stand matrix-free operation
+      fe_eval.evaluate(false, true, false);
+      for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
+        fe_eval.submit_gradient(fe_eval.get_gradient(q), q);
+      fe_eval.integrate(false, true);
+
+      // 3d)
+      VectorizedArray<number> temp = 0.0;
+      for (unsigned int v = 0; v < data.n_components_filled(cell); v++)
+        if (!constraints.is_constrained(dof_indices[v][i]))
+        {
+          temp = fe_eval.begin_dof_values()[i][v];
+
+          for (unsigned int ii = 0; ii < dof_indices[v].size(); ii++)
+          {
+            if (!constraints.is_constrained(dof_indices[v][ii]))
+              continue;
+            auto &cs = *constraints.get_constraint_entries(dof_indices[v][ii]);
+            for (auto c : cs)
+              if (c.first == dof_indices[v][i])
+                temp += fe_eval.begin_dof_values()[ii][v] * c.second;
+          }
+        }
+      diagonal[i] = temp;
+    }
+
+    // 4) write local diagonal back to the global diagonal
+    for (unsigned int i = 0; i < fe_eval_plain.dofs_per_cell; ++i)
+      fe_eval_plain.begin_dof_values()[i] = diagonal[i];
+    fe_eval_plain.distribute_local_to_global(dst);
+  }
+}
+
+
 
 template <int dim>
 class StokesProblem
@@ -285,6 +426,7 @@ private:
 
   mb_vector_t                      inv_diag_mb;
   mf_vector_t                      inv_diag_mf;
+  mf_vector_t                      new_inv_diag_mf;
 
   ConditionalOStream                        pcout;
 };
@@ -379,6 +521,7 @@ void StokesProblem<dim>::setup_system ()
       MatrixFree<dim,double>::AdditionalData::none;
   additional_data.mapping_update_flags = (update_values | update_gradients |
                                           update_JxW_values | update_quadrature_points);
+
   std::shared_ptr<MatrixFree<dim,double> >
       mf_storage(new MatrixFree<dim,double>());
   mf_storage->reinit(dof_handler, constraints,
@@ -393,6 +536,21 @@ void StokesProblem<dim>::setup_system ()
   for (auto indx : dof_handler.locally_owned_dofs())
     if (constraints.is_constrained(indx))
       inv_diag_mf(indx) = 0.0;
+
+
+
+
+  MatrixFree<dim, double> mf_plain;
+  AffineConstraints<double> constraints_empty;
+  mf_plain.reinit(dof_handler, constraints_empty, QGauss<1>(velocity_degree + 1), additional_data);
+
+  matrix_free_matrix.attach_for_diag(mf_plain,constraints);
+
+  mf_vector_t dummy_vec;
+  matrix_free_matrix.initialize_dof_vector(dummy_vec);
+  matrix_free_matrix.initialize_dof_vector(new_inv_diag_mf);
+  matrix_free_matrix.new_compute_diag(new_inv_diag_mf,dummy_vec);
+
 }
 
 
@@ -467,64 +625,6 @@ void StokesProblem<dim>::assemble_system ()
     }
 }
 
-template <int dim>
-void StokesProblem<dim>::get_ablock_diagonals()
-{
-  // If we have a tangential boundary we must compute the diagonal
-  // outside of the matrix-free object
-  dealii::LinearAlgebra::distributed::Vector<double> diagonal_vector;
-  matrix_free_matrix.initialize_dof_vector(diagonal_vector);
-
-  QGauss<dim>  quadrature_formula(velocity_degree+1);
-  FEValues<dim> fe_values (fe, quadrature_formula,
-                           update_values   | update_gradients |
-                           update_quadrature_points | update_JxW_values);
-
-  const unsigned int   dofs_per_cell   = fe.dofs_per_cell;
-  const unsigned int   n_q_points      = quadrature_formula.size();
-
-  FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
-
-  std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
-  const FEValuesExtractors::Vector velocities (0);
-
-  std::vector<SymmetricTensor<2,dim> > symgrad_phi_u (dofs_per_cell);
-
-  typename DoFHandler<dim>::active_cell_iterator cell = dof_handler.begin_active(),
-      endc = dof_handler.end();
-  for (; cell!=endc; ++cell)
-    if (cell->subdomain_id()==triangulation.locally_owned_subdomain())
-    {
-      cell_matrix = 0;
-      fe_values.reinit (cell);
-
-      for (unsigned int q=0; q<n_q_points; ++q)
-      {
-        for (unsigned int k=0; k<dofs_per_cell; ++k)
-          symgrad_phi_u[k] = fe_values[velocities].symmetric_gradient (k, q);
-
-        for (unsigned int i=0; i<dofs_per_cell; ++i)
-          for (unsigned int j=0; j<dofs_per_cell; ++j)
-            cell_matrix(i,j) += (2*(symgrad_phi_u[i]*symgrad_phi_u[j])
-                                 * fe_values.JxW(q));
-      }
-
-      cell->get_dof_indices (local_dof_indices);
-
-      // New function that only distributes to the diagonal
-      //      constraints.distribute_local_to_global_new_public (cell_matrix,
-      //                                                          local_dof_indices,
-      //                                                         diagonal_vector);
-      constraints.distribute_local_to_global (cell_matrix,
-                                              local_dof_indices,
-                                              system_matrix);
-    }
-
-  // If we have the new distribute_local_to_global above, we only have stored a vector.
-  //diagonal_vector.compress(VectorOperation::add);
-  system_matrix.compress (VectorOperation::add);
-}
-
 
 template <int dim>
 void StokesProblem<dim>::output_results (const unsigned int cycle) const
@@ -558,6 +658,13 @@ void StokesProblem<dim>::run ()
   std::cout << "Matrix-free:" << std::endl;
   for (unsigned int i=0; i<inv_diag_mf.size(); ++i)
     std::cout << inv_diag_mf(i) << std::endl;
+
+  std::cout << std::endl;
+
+  //new_inv_diag_mf.print(std::cout);
+  std::cout << "NEW Matrix-free:" << std::endl;
+  for (unsigned int i=0; i<new_inv_diag_mf.size(); ++i)
+    std::cout << new_inv_diag_mf(i) << std::endl;
 
   output_results(0);
 }
