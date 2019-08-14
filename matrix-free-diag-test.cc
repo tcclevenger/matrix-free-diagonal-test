@@ -171,6 +171,7 @@ ABlockOperator<dim,degree_v,number>::attach_for_diag(const MatrixFree<dim, numbe
 {
   mf_plain = mf;
   constraints.copy_from(c);
+  constraints.close();
 }
 
 template <int dim, int degree_v, typename number>
