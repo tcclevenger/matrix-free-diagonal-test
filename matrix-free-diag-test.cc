@@ -559,6 +559,10 @@ void StokesProblem<dim>::setup_system ()
   matrix_free_matrix.initialize_dof_vector(new_inv_diag_mf);
   matrix_free_matrix.new_compute_diag(new_inv_diag_mf,dummy_vec);
 
+  for (auto indx : dof_handler.locally_owned_dofs())
+    if (constraints.is_constrained(indx))
+      new_inv_diag_mf(indx) = 0.0;
+
 }
 
 
