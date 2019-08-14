@@ -329,9 +329,9 @@ ABlockOperator<dim,degree_v,number>
         // lexicographically see
         // (https://www.dealii.org/8.5.1/doxygen/deal.II/classFE__Q.html)
         // so we have to fix the order
-//        auto temp = dof_indices[v];
-//        for (unsigned int j = 0; j < dof_indices[v].size(); j++)
-//          dof_indices[v][j] = temp[data.get_shape_info().lexicographic_numbering[j]];
+        auto temp = dof_indices[v];
+        for (unsigned int j = 0; j < dof_indices[v].size(); j++)
+          dof_indices[v][j] = temp[data.get_shape_info().lexicographic_numbering[j]];
     }
 
     // 3) loop over all local DoFs and setup local diagonal entry by entry
