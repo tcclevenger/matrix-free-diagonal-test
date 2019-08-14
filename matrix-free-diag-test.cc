@@ -148,8 +148,8 @@ private:
                                const LinearAlgebra::distributed::Vector<number> & src,
                                const std::pair<unsigned int, unsigned int> &cell_range) const;
 
-  MatrixFree<dim, number> &  mf_plain;
-  AffineConstraints<number> &constraints;
+  MatrixFree<dim, number> mf_plain;
+  AffineConstraints<number> constraints;
 
 };
 template <int dim, int degree_v, typename number>
