@@ -275,7 +275,7 @@ ABlockOperator<dim,degree_v,number>
 ::new_compute_diag(LinearAlgebra::distributed::Vector<number> &      dst,
                    const LinearAlgebra::distributed::Vector<number> &src)
 {
-  this->data->cell_loop(&ABlockOperator::compute_diag_local, this, dst, src);
+  this->data->cell_loop(&ABlockOperator::new_compute_diag_local, this, dst, src);
 }
 
 template <int dim, int degree_v, typename number>
